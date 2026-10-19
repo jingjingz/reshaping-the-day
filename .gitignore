@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+# never commit study data: data/ holds synthetic files only
+*.csv
+*.rds
+*.RData
+*.mat

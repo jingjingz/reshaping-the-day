@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Explorer · Reshaping the Day</title>
+<meta name="description" content="Mix the common patterns of change in daily activity and watch a typical day reshape.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/engine.js" defer></script>
+<script src="assets/js/charts.js" defer></script>
+<script src="assets/js/explorer.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav class="wrap site-nav" aria-label="Main">
+    <a class="wordmark" href="index.html">Reshaping the Day</a>
+    <div class="nav-links">
+      <a href="index.html">Story</a>
+      <a href="explorer.html" aria-current="page">Explorer</a>
+      <a href="index.html#papers">Papers</a>
+      <a href="https://github.com/jingjingz/PA_change">Code</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="wrap" style="padding-top: 44px; padding-bottom: 72px">
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+    <div style="min-width: 0">
+      <h1 style="font-size: clamp(34px, 4vw, 42px)">Explorer</h1>
+      <p class="body" style="margin: 10px 0 0">Mix the four common patterns and watch a typical day change. Everyone here is synthetic.</p>
+    </div>
+    <nav class="tabs" aria-label="Explorer sections">
+      <a href="#mix" aria-current="true">Mix patterns</a>
+      <a href="#compare">Compare two people</a>
+      <a href="#cohort">Browse the cohort</a>
+      <span class="soon">Your data · soon</span>
+    </nav>
+  </div>
+
+  <section id="mix" class="explorer-row" aria-label="Mix patterns">
+    <form class="card controls" id="mixer" onsubmit="return false">
+      <fieldset>
+        <legend>Pattern mix</legend>
+        <div class="slider">
+          <div class="slider-head"><label for="p1">1 · More or less, all day</label><output for="p1" id="o1">0.0</output></div>
+          <input id="p1" type="range" min="-3" max="3" step="0.1" value="0">
+          <div class="ends" aria-hidden="true"><span>Less activity</span><span>More activity</span></div>
+        </div>
+        <div class="slider">
+          <div class="slider-head"><label for="p2">2 · Earlier, busier mornings</label><output for="p2" id="o2">0.0</output></div>
+          <input id="p2" type="range" min="-3" max="3" step="0.1" value="0">
+          <div class="ends" aria-hidden="true"><span>Later, quieter</span><span>Earlier, busier</span></div>
+        </div>
+        <div class="slider">
+          <div class="slider-head"><label for="p3">3 · Late morning to late afternoon</label><output for="p3" id="o3">0.0</output></div>
+          <input id="p3" type="range" min="-3" max="3" step="0.1" value="0">
+          <div class="ends" aria-hidden="true"><span>Toward late morning</span><span>Toward late afternoon</span></div>
+        </div>
+        <div class="slider">
+          <div class="slider-head"><label for="p4">4 · Midday swings</label><output for="p4" id="o4">0.0</output></div>
+          <input id="p4" type="range" min="-3" max="3" step="0.1" value="0">
+          <div class="ends" aria-hidden="true"><span>Smoother</span><span>Bigger swings</span></div>
+        </div>
+      </fieldset>
+      <label class="check"><input type="checkbox" id="avg" checked>Include the average change</label>
+      <p class="small" style="margin: -12px 0 0">One step on a slider is a typical person's amount of that pattern. The average change is the cohort's shared decline.</p>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        <button type="button" class="btn btn-small" id="reset">Reset</button>
+        <button type="button" class="btn btn-small btn-primary" id="random">Random person</button>
+      </div>
+      <p class="small" id="loaded" aria-live="polite" style="margin: 0"></p>
+    </form>
+
+    <section class="card result" aria-label="Result">
+      <ul class="legend" style="margin: 0">
+        <li><span class="sw sw-v1" aria-hidden="true"></span>Typical day, visit 1</li>
+        <li><span class="sw sw-v2" aria-hidden="true"></span>After the mix, visit 2</li>
+        <li><span class="sw sw-timing" aria-hidden="true"></span>Timing</li>
+        <li><span class="sw sw-amount" aria-hidden="true"></span>Amount</li>
+      </ul>
+      <div id="mix-chart"></div>
+      <div class="stats" aria-live="polite">
+        <div class="stat"><div class="v" id="s-total">0%</div><div class="k">Daily total, visit 2 vs visit 1</div></div>
+        <div class="stat"><div class="v" id="s-energy">–</div><div class="k" id="s-energy-k">How much the day changed</div></div>
+        <div class="stat"><div class="v" id="s-shift">–</div><div class="k">Average timing shift</div></div>
+      </div>
+    </section>
+  </section>
+
+  <div class="explorer-row">
+    <section id="compare" class="card" style="flex: 1 1 460px; min-width: 0" aria-labelledby="compare-title">
+      <h2 id="compare-title" style="font-size: 24px">Compare two people</h2>
+      <p class="small" style="margin: 6px 0 0">Pick any two. The first five lose exactly the same share of their daily activity, each in a different way.</p>
+      <div class="chips" id="chips" role="group" aria-label="People to compare"></div>
+      <div class="compare-grid" id="compare-grid"></div>
+    </section>
+
+    <section id="cohort" class="card" style="flex: 1 1 460px; min-width: 0" aria-labelledby="cohort-title">
+      <h2 id="cohort-title" style="font-size: 24px">Browse the cohort</h2>
+      <p class="small" style="margin: 6px 0 12px">300 synthetic people placed by their amount of patterns 1 and 2. Select a dot to load that person into the mixer.</p>
+      <div id="scatter"></div>
+      <div class="scale" aria-hidden="true">
+        <span>How much the day changed: less</span>
+        <span style="display: flex; gap: 2px"><span class="s" style="background: var(--change-1)"></span><span class="s" style="background: var(--change-2)"></span><span class="s" style="background: var(--change-3)"></span><span class="s" style="background: var(--change-4)"></span><span class="s" style="background: var(--change-5)"></span></span>
+        <span>more</span>
+      </div>
+      <form class="pick" id="pick" onsubmit="return false">
+        <label for="pick-id">Or load person #</label>
+        <input id="pick-id" type="number" min="1" max="300" value="18" inputmode="numeric">
+        <button type="submit" class="btn btn-small">Load</button>
+      </form>
+    </section>
+  </div>
+
+  <p class="small" style="margin-top: 28px">All people are synthetic. Pattern shapes follow Zablocki et al., <a href="https://arxiv.org/abs/2604.22123">arXiv:2604.22123</a>. Method: Zou et al., <em>Annals of Applied Statistics</em>, 2023.</p>
+</main>
+</body>
+</html>
