@@ -1,5 +1,7 @@
 # Reshaping the Day
 
+**Live site: https://jingjingz.github.io/reshaping-the-day/**
+
 A visual, interactive guide to how daily physical activity changes over the years, in amount and in timing. It demonstrates the Riemannian deformation approach to longitudinal accelerometer data (Zou et al., 2023) and its application to older women in the OPACH and WHISH studies (Zablocki et al., 2026).
 
 - **Story** (`index.html`): three ideas in order. Change has two parts, timing and amount. Cohorts share a few patterns of change. Those patterns relate to physical function.
