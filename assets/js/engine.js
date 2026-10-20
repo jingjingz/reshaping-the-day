@@ -18,19 +18,21 @@
     return s;
   }
 
-  // One evaluation of the Hamiltonian equations: dq = K p, dp = sum_k K_jk (p_j.p_k)(q_j - q_k) / sigma^2
-  function rhs(qx, qy, px, py, inv2s2, invs2, out) {
-    var n = qx.length, dqx = out[0], dqy = out[1], dpx = out[2], dpy = out[3];
+  // One evaluation of the Hamiltonian equations for a kernel that is a sum of Gaussians
+  // K(x, y) = sum_i exp(-|x - y|^2 / (2 sigma_i^2)):
+  //   dq_j = sum_k K_jk p_k,  dp_j = sum_k (p_j . p_k) sum_i K_i,jk (q_j - q_k) / sigma_i^2
+  function rhs(qx, qy, px, py, sig, out) {
+    var n = qx.length, dqx = out[0], dqy = out[1], dpx = out[2], dpy = out[3], m = sig.length;
+    var inv2 = sig.map(function (s) { return 1 / (2 * s * s); }), inv1 = sig.map(function (s) { return 1 / (s * s); });
     dqx.fill(0); dqy.fill(0); dpx.fill(0); dpy.fill(0);
     for (var j = 0; j < n; j++) {
-      // diagonal term: K = 1, q_j - q_j = 0
-      dqx[j] += px[j]; dqy[j] += py[j];
+      dqx[j] += m * px[j]; dqy[j] += m * py[j];   // diagonal: each kernel equals 1, q_j - q_j = 0
       for (var k = j + 1; k < n; k++) {
-        var dx = qx[j] - qx[k], dy = qy[j] - qy[k];
-        var K = Math.exp(-(dx * dx + dy * dy) * inv2s2);
+        var dx = qx[j] - qx[k], dy = qy[j] - qy[k], r2 = dx * dx + dy * dy, K = 0, Kd = 0;
+        for (var i = 0; i < m; i++) { var e = Math.exp(-r2 * inv2[i]); K += e; Kd += e * inv1[i]; }
         dqx[j] += K * px[k]; dqy[j] += K * py[k];
         dqx[k] += K * px[j]; dqy[k] += K * py[j];
-        var c = K * (px[j] * px[k] + py[j] * py[k]) * invs2;
+        var c = Kd * (px[j] * px[k] + py[j] * py[k]);
         dpx[j] += c * dx; dpy[j] += c * dy;
         dpx[k] -= c * dx; dpy[k] -= c * dy;
       }
@@ -44,9 +46,8 @@
    */
   function shoot(base, px, py, opts) {
     opts = opts || {};
-    var sigma = opts.sigma || 0.06, nsteps = opts.nsteps || 11;
+    var sig = opts.sigmas || (opts.sigma ? [opts.sigma] : [0.06]), nsteps = opts.nsteps || 11;
     var n = base.length, s = grid(n);
-    var inv2s2 = 1 / (2 * sigma * sigma), invs2 = 1 / (sigma * sigma);
     var qx = Float64Array.from(s), qy = Float64Array.from(base);
     var Px = Float64Array.from(px), Py = Float64Array.from(py);
     var k1 = [new Float64Array(n), new Float64Array(n), new Float64Array(n), new Float64Array(n)];
@@ -55,12 +56,12 @@
     var h = 1 / nsteps;
     var traj = opts.trajectory ? [[Float64Array.from(qx), Float64Array.from(qy)]] : null;
     for (var step = 0; step < nsteps; step++) {
-      rhs(qx, qy, Px, Py, inv2s2, invs2, k1);
+      rhs(qx, qy, Px, Py, sig, k1);
       for (var j = 0; j < n; j++) {
         mx[j] = qx[j] + 0.5 * h * k1[0][j]; my[j] = qy[j] + 0.5 * h * k1[1][j];
         mpx[j] = Px[j] + 0.5 * h * k1[2][j]; mpy[j] = Py[j] + 0.5 * h * k1[3][j];
       }
-      rhs(mx, my, mpx, mpy, inv2s2, invs2, k2);
+      rhs(mx, my, mpx, mpy, sig, k2);
       for (j = 0; j < n; j++) {
         qx[j] += h * k2[0][j]; qy[j] += h * k2[1][j];
         Px[j] += h * k2[2][j]; Py[j] += h * k2[3][j];
@@ -148,9 +149,11 @@
   }
 
   // Largest sideways shift and largest drop or gain, for one-line summaries
-  function summarize(base, result, meta) {
+  // edge (optional): minutes to skip at 6 am and midnight, where curve ends can slide freely
+  function summarize(base, result, meta, edge) {
     var s = grid(base.length), bestT = 0, bestTj = 0, bestA = 0, bestAj = 0;
-    for (var j = 0; j < base.length; j++) {
+    var skip = Math.round((edge || 0) / meta.step_minutes);
+    for (var j = skip; j < base.length - skip; j++) {
       var dt = (result.qx[j] - s[j]) * MIN_PER_UNIT;
       if (Math.abs(dt) > Math.abs(bestT)) { bestT = dt; bestTj = j; }
       var dy = result.qy[j] - base[j];

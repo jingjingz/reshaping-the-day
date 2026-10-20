@@ -9,7 +9,7 @@
 
   fetch('data/synthetic.json').then(function (r) { return r.json(); }).then(function (D) {
     var meta = D.meta;
-    function shoot(base, p) { return E.shoot(base, p.x, p.y, { sigma: meta.sigma, nsteps: meta.nsteps }); }
+    function shoot(base, p) { return E.shoot(base, p.x, p.y, { sigmas: meta.sigmas, nsteps: meta.nsteps }); }
     var energies = D.cohort.map(function (c) { return c.energy; }).sort(function (a, b) { return a - b; });
 
     // ---------------- mixer
@@ -29,7 +29,7 @@
       var z = scores();
       z.forEach(function (v, i) { outputs[i].textContent = fmtScore(v); });
       var p = E.mix(D.patterns, z, avg.checked);
-      var res = E.shoot(D.typical, p.x, p.y, { sigma: meta.sigma, nsteps: meta.nsteps });
+      var res = E.shoot(D.typical, p.x, p.y, { sigmas: meta.sigmas, nsteps: meta.nsteps });
       chart.update({ result: res });
       $('s-total').textContent = C.fmtPct(E.pctChange(D.typical, res, meta));
       var pct = E.percentileOf(E.energy(p.x, p.y, meta), energies);
@@ -138,9 +138,10 @@
       ['mix', 'compare', 'cohort'].forEach(function (id) { io.observe($(id)); });
     }
   }).catch(function (err) {
+    console.error(err);
     var m = document.createElement('p');
     m.className = 'small';
-    m.textContent = 'The explorer could not load its data (' + err.message + '). Serve the site over http, for example with: python3 -m http.server';
+    m.textContent = 'The explorer could not start (' + err.message + '). If you opened the file directly, serve the folder over http, for example with: python3 -m http.server';
     document.getElementById('main').prepend(m);
   });
 })();

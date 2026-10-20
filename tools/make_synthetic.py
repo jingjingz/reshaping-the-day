@@ -28,8 +28,10 @@ MINUTES = np.arange(0, 1080 + STEP, STEP)   # 6:00 .. 24:00
 HOURS = 6 + MINUTES / 60.0
 S = -1 + 2 * MINUTES / 1080.0               # scaled time in [-1, 1]
 N = len(S)
-SIGMA = 0.06                                # kernel width, scaled units (about 32 min)
-NSTEPS = 11                                 # as in Zou et al. (2023)
+# Kernel: sum of two Gaussians, sizes from fmatch_subj_local.m in github.com/jingjingz/PA_change,
+# in the convention exp(-|x - y|^2 / (2 sigma^2)) stated in Zou et al. (2023)
+SIGMAS = [0.08, 0.02]
+NSTEPS = 10                                 # nb_euler_steps in the same script
 GRAND_MEAN, FOUR_SD = 320.0, 1000.0         # illustrative counts per minute
 
 DECIMALS = 7
@@ -92,9 +94,11 @@ PVE = {"p1": 22.4, "p2": 10.9, "p3": 9.1, "p4": 6.9}
 # ------------------------------------------------------------------ geodesic shooting
 def _rhs(q, p):
     d = q[:, None, :] - q[None, :, :]
-    K = np.exp(-(d ** 2).sum(-1) / (2 * SIGMA ** 2))
+    r2 = (d ** 2).sum(-1)
+    K = sum(np.exp(-r2 / (2 * s ** 2)) for s in SIGMAS)
+    Kd = sum(np.exp(-r2 / (2 * s ** 2)) / s ** 2 for s in SIGMAS)
     dq = K @ p
-    dp = ((K * (p @ p.T))[:, :, None] * d).sum(1) / SIGMA ** 2
+    dp = ((Kd * (p @ p.T))[:, :, None] * d).sum(1)
     return dq, dp
 
 
@@ -180,6 +184,9 @@ ARCHETYPES = [
     ("shorter-day", "Shorter day", "Starts later and winds down earlier.", TYPICAL, p_short),
 ]
 
+_shift_h = 1.0 * np.exp(-0.5 * ((HOURS - 8.0) / 1.2) ** 2)
+PURE_SHIFT_TARGET = np.interp(np.clip(HOURS - _shift_h, 6, 24), HOURS, B_base)
+
 hero_base = TYPICAL + bump(18.5, 0.6, 0.09) + bump(12.6, 0.4, 0.03) - bump(6.6, 0.5, 0.05)
 hero_p = pA + pB
 
@@ -211,16 +218,17 @@ def mom(p):
 out = {
     "meta": {
         "note": "Synthetic. Shapes traced from Zablocki et al., arXiv:2604.22123. No participant data.",
-        "step_minutes": STEP, "n": N, "sigma": SIGMA, "nsteps": NSTEPS,
+        "step_minutes": STEP, "n": N, "sigmas": SIGMAS, "nsteps": NSTEPS,
         "grand_mean": GRAND_MEAN, "four_sd": FOUR_SD, "energy_scale": 1e6,
         "pve_note": "Share of variation from the preprint (baseline to W1). Provisional.",
     },
     "typical": r(TYPICAL),
     "patterns": {k: mom(M[k]) for k in ["mean", "p1", "p2", "p3", "p4"]},
     "pve": PVE,
-    "hero": {"base": r(hero_base), "p": mom(hero_p)},
-    "archetypes": [{"id": a, "name": nm, "blurb": bl, "base": r(b), "p": mom(p)}
+    "hero": {"base": r(hero_base), "target": r(resample(shoot(hero_base, hero_p)))},
+    "archetypes": [{"id": a, "name": nm, "blurb": bl, "base": r(b), "target": r(resample(shoot(b, p)))}
                    for a, nm, bl, b, p in ARCHETYPES],
+    "examples": {"pure_shift": {"base": r(B_base), "target": r(PURE_SHIFT_TARGET)}},
     "cohort": cohort,
 }
 os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
@@ -228,8 +236,8 @@ with open(os.path.join(ROOT, "data", "synthetic.json"), "w") as fh:
     json.dump(out, fh, separators=(",", ":"))
 
 # Reference shoot for the JS engine test, computed from the rounded inputs it will read
-fx_base = np.array(out["hero"]["base"])
-fx_p = np.stack([out["hero"]["p"]["x"], out["hero"]["p"]["y"]], axis=1)
+fx_base = np.array(out["typical"])
+fx_p = np.stack([out["patterns"]["p1"]["x"], out["patterns"]["p1"]["y"]], axis=1)
 q1 = shoot(fx_base, fx_p)
 os.makedirs(os.path.join(ROOT, "tools", "fixtures"), exist_ok=True)
 with open(os.path.join(ROOT, "tools", "fixtures", "shoot_reference.json"), "w") as fh:

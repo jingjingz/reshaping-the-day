@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>How it works · Reshaping the Day</title>
+<meta name="description" content="How the Riemannian deformation approach turns repeated accelerometer wear into interpretable patterns of change, explained without equations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/engine.js" defer></script>
+<script src="assets/js/charts.js" defer></script>
+<script src="assets/js/preprocess.js" defer></script>
+<script src="assets/js/method.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav class="wrap site-nav" aria-label="Main">
+    <a class="wordmark" href="index.html">Reshaping the Day</a>
+    <div class="nav-links">
+      <a href="index.html">Story</a>
+      <a href="method.html" aria-current="page">How it works</a>
+      <a href="explorer.html">Explorer</a>
+      <a href="yourdata.html">Your data</a>
+      <a href="index.html#papers">Papers</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="wrap hero" aria-labelledby="m-title">
+    <p class="kicker">For researchers</p>
+    <h1 id="m-title">How it works</h1>
+    <p class="lede">Five steps take repeated accelerometer wear to patterns of change you can relate to health outcomes. This page explains each step in plain terms. The papers carry the mathematics.</p>
+    <ol class="steps" aria-label="The five steps">
+      <li><a href="#s1">Wear to a daily curve</a></li>
+      <li><a href="#s2">One scale for time and activity</a></li>
+      <li><a href="#s3">Pushes that flow</a></li>
+      <li><a href="#s4">Shared patterns</a></li>
+      <li><a href="#s5">Link to outcomes</a></li>
+    </ol>
+  </section>
+
+  <section id="s1" class="band" aria-labelledby="s1-title">
+    <div class="wrap chapter split">
+      <div class="text">
+        <p class="kicker">Step 1</p>
+        <h2 id="s1-title">From a week of wear to one daily curve</h2>
+        <p class="body">Each visit gives about a week of minute-by-minute counts. Single days are noisy: a walk to the mailbox, an afternoon errand, a quiet morning. The analysis keeps 6 am to midnight, drops days with too little wear, averages the remaining days minute by minute, and smooths the result into one curve per person per visit.</p>
+        <ul class="facts">
+          <li><strong>Window</strong> 6 am to midnight, 1,080 minutes</li>
+          <li><strong>Valid day</strong> at least 14 hours of wear in the window</li>
+          <li><strong>Valid visit</strong> at least 4 valid days</li>
+          <li><strong>Smoothing</strong> cubic spline, 25 degrees of freedom</li>
+        </ul>
+      </div>
+      <figure class="fig card">
+        <ul class="legend">
+          <li><span class="sw sw-typ" aria-hidden="true"></span>Single days, 5-minute means</li>
+          <li><span class="sw sw-v1" aria-hidden="true"></span>Average of the week</li>
+          <li><span class="sw sw-v2" aria-hidden="true"></span>Smoothed daily curve</li>
+        </ul>
+        <div id="m-days"></div>
+        <figcaption class="caption">Four synthetic days of hip-worn counts, their average and the smoothed curve that the rest of the method uses.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="s2" class="wrap chapter" aria-labelledby="s2-title">
+    <div class="split">
+      <div class="text">
+        <p class="kicker">Step 2</p>
+        <h2 id="s2-title">One scale for time and activity</h2>
+        <p class="body">A change can move activity sideways in time or up and down in amount. To weigh the two fairly, both axes are rescaled to run from about −1 to 1: the day's clock, and activity centered on the cohort's average and divided by four standard deviations. An hour's shift in time and a drop of about half a standard deviation in activity then cost a similar amount of effort to produce.</p>
+      </div>
+      <div class="text">
+        <p class="pull" style="margin-top: 0">The choice of scale is a choice of emphasis. Stretching the time axis makes timing shifts cheaper and lets more of the change show up as timing. The papers keep the two balanced.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s3" class="band" aria-labelledby="s3-title">
+    <div class="wrap chapter">
+      <p class="kicker">Step 3</p>
+      <h2 id="s3-title">Pushes that flow from one visit to the next</h2>
+      <p class="body">The change between two visits is modeled as a smooth flow that carries the earlier curve onto the later one. A push starts at every minute of the day. Neighboring minutes move together, so the curve bends without tearing. Kernel widths set how far that coupling reaches. This demo uses the settings from the published code: a broad kernel of about 40 minutes plus a narrow one of about 10 minutes. Among all flows that match the two curves, the method picks the one that takes the least effort, and the starting pushes alone then describe the whole change.</p>
+      <div class="frames" id="m-frames"></div>
+      <p class="caption">The flow for the woman on the story page, shown at four moments between visit 1 (left) and visit 2 (right).</p>
+
+      <h3 style="margin-top: 56px">Why not subtract the two curves?</h3>
+      <p class="body">Subtraction compares the two visits at the same clock time. When a morning simply starts an hour later, subtraction reports a large drop in early morning and a small gain around 10 am, as if the amount changed twice. The pushes read most of it as one thing, a later morning: the fitted pushes move the steepest part of the rise about <span id="m-shift-min">40</span> minutes later, and explain the rest as a little less activity early in the morning.</p>
+      <div class="grid-2" style="margin-top: 20px">
+        <figure class="card" style="margin: 0">
+          <figcaption><h3>Subtraction</h3><p class="sub">Visit 2 minus visit 1 at each clock time.</p></figcaption>
+          <div id="m-diff"></div>
+        </figure>
+        <figure class="card" style="margin: 0">
+          <figcaption><h3>Pushes</h3><p class="sub">Timing and amount at each minute.</p></figcaption>
+          <div id="m-push"></div>
+        </figure>
+      </div>
+      <p class="caption">A synthetic morning that starts an hour later, with no other change. The pushes are fitted from the two curves by this demo, the way the method estimates them.</p>
+    </div>
+  </section>
+
+  <section id="s4" class="wrap chapter" aria-labelledby="s4-title">
+    <div class="split">
+      <div class="text">
+        <p class="kicker">Step 4</p>
+        <h2 id="s4-title">From many people's pushes to a few shared patterns</h2>
+        <p class="body">Each person's pushes form two curves across the day: the timing part and the amount part. Multivariate functional principal component analysis looks at both parts together across the whole cohort and finds the patterns that account for the most variation. Each person then gets one score per pattern, and the person's change is close to the average change plus that mix of patterns.</p>
+        <p class="body">A second summary, how much the day changed overall, adds up the size of every push regardless of direction. The papers call it deformation energy.</p>
+        <p class="body"><a href="explorer.html">Mix the patterns yourself in the explorer.</a></p>
+      </div>
+      <figure class="fig card">
+        <figcaption><h3>One person's mix</h3><p class="sub" id="m-mix-sub">Scores on the four patterns.</p></figcaption>
+        <div id="m-mix"></div>
+        <a class="btn btn-small" id="m-mix-link" href="explorer.html" style="margin-top: 14px">Open this person in the explorer</a>
+      </figure>
+    </div>
+  </section>
+
+  <section id="s5" class="band" aria-labelledby="s5-title">
+    <div class="wrap chapter">
+      <p class="kicker">Step 5</p>
+      <h2 id="s5-title">Linking change to outcomes</h2>
+      <p class="body">Pattern scores and deformation energy become ordinary variables. In the WHISH analysis, linear mixed models related them to physical function at each follow-up visit, with baseline function and other covariates in the model and a random effect for each woman. Penalized selection kept the patterns and covariates that mattered.</p>
+      <p class="body">The same features can feed other analyses: an intervention's effect on patterns of change, clustering people by how their days changed, or prediction models.</p>
+    </div>
+  </section>
+
+  <section class="wrap chapter" aria-labelledby="apply-title">
+    <p class="kicker">Use it</p>
+    <h2 id="apply-title">Applying it to your own study</h2>
+    <div class="grid-2" style="margin-top: 28px">
+      <div class="card">
+        <h3>What you need</h3>
+        <ul class="checklist">
+          <li>Minute-level activity from the same device and wear site at two or more visits. The WHISH analysis used hip-worn ActiGraph vector magnitude counts.</li>
+          <li>Enough valid wear at each visit for a stable average day. Four or more valid days is the usual bar.</li>
+          <li>A smoothing level checked on your device. Twenty-five degrees of freedom suited ActiGraph counts.</li>
+          <li>Computing time for the fits: about two minutes per person and pair of visits, so large cohorts run in parallel on a cluster.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Tools</h3>
+        <ul class="checklist">
+          <li>Deformation fitting: the MATLAB toolbox fshapesTK (Charlier, Charon and Trouvé, 2017).</li>
+          <li>Patterns: the R package MFPCA (Happ and Greven, 2018).</li>
+          <li>Example scripts for both steps: <a href="https://github.com/jingjingz/PA_change">github.com/jingjingz/PA_change</a>.</li>
+          <li>A single-person demo that runs in your browser: <a href="yourdata.html">Try your own data</a>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Keep in mind</h3>
+        <ul class="checklist">
+          <li>Patterns belong to a cohort. Two studies can find different patterns, and that difference is often the finding.</li>
+          <li>Pattern scores and outcomes are associated, not causally linked, unless the design supports more.</li>
+          <li>Seasons, holidays and device changes between visits also reshape days. Check them before reading change as aging or intervention.</li>
+          <li>Timing and amount can trade off. Where activity rises or falls steeply, a later start can also be drawn as less activity early. The fit picks the least-effort mix, so estimated timing shifts can be smaller than the true ones, most of all where the day's curve is gentle.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Read more</h3>
+        <ul class="checklist">
+          <li>The method: Zou et al., <em>Annals of Applied Statistics</em> 2023, <a href="https://doi.org/10.1214/23-AOAS1758">doi:10.1214/23-AOAS1758</a>.</li>
+          <li>The OPACH and WHISH application: Zablocki et al., <a href="https://arxiv.org/abs/2604.22123">arXiv:2604.22123</a>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="col">
+      <h2>About this demo</h2>
+      <p>All curves are synthetic, shaped after published figures. No study participant's data appear on this site.</p>
+    </div>
+    <div class="col-wide">
+      <h2>Next</h2>
+      <p><a href="explorer.html">Explorer</a> · <a href="yourdata.html">Try your own data</a> · <a href="index.html">Back to the story</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -14,7 +14,7 @@
 
   fetch('data/synthetic.json').then(function (r) { return r.json(); }).then(function (D) {
     var meta = D.meta;
-    function shoot(base, p, traj) { return E.shoot(base, p.x, p.y, { sigma: meta.sigma, nsteps: meta.nsteps, trajectory: traj }); }
+    function shoot(base, p, traj) { return E.shoot(base, p.x, p.y, { sigmas: meta.sigmas, nsteps: meta.nsteps, trajectory: traj }); }
 
     // ---------------- hero: morph along the geodesic path
     var heroRes = shoot(D.hero.base, D.hero.p, true);
@@ -40,7 +40,7 @@
     new C.DayChart(document.getElementById('chart-a'), { base: A.base, result: resA, mode: 'split', every: 30, meta: meta, height: small,
       label: 'Person A: activity between 5 and 9 pm is lower at visit 2. Timing barely changes.' });
     new C.DayChart(document.getElementById('chart-b'), { base: B.base, result: resB, mode: 'split', every: 30, meta: meta, height: small,
-      label: 'Person B: the morning rise happens about an hour later at visit 2.' });
+      label: 'Person B: the morning rise happens later at visit 2. Before 10 am the pushes point right and down.' });
     document.querySelectorAll('.ab-total').forEach(function (el) { el.textContent = Math.abs(totA).toFixed(1) + '%'; });
     document.querySelector('.a-total').textContent = C.fmtPct(totA) + ' daily activity';
     document.querySelector('.b-total').textContent = C.fmtPct(totB) + ' daily activity';
@@ -78,10 +78,67 @@
         label: 'Pattern ' + (i + 1) + ', ' + P.title + ': ' + P.text
       });
     });
+
+    // ---------------- chapter 3: direction-only schematics
+    function scale(p, k) { return { x: p.x.map(function (v) { return k * v; }), y: p.y.map(function (v) { return k * v; }) }; }
+    var less = shoot(D.typical, scale(D.patterns.p1, -1.6)), more = shoot(D.typical, scale(D.patterns.p1, 1.6));
+    function glyph(x0, y0, w, h, res) {
+      var n = D.typical.length, lo = -0.45, hi = 0.45;
+      var X = function (hr) { return x0 + (hr - 6) / 18 * w; }, Y = function (v) { return y0 + (hi - v) / (hi - lo) * h; };
+      var base = '', d = '';
+      for (var j = 0; j < n; j++) {
+        base += (j ? 'L' : 'M') + X(6 + 18 * j / (n - 1)).toFixed(1) + ',' + Y(D.typical[j]).toFixed(1);
+        d += (j ? 'L' : 'M') + X(6 + (res.qx[j] + 1) * 9).toFixed(1) + ',' + Y(res.qy[j]).toFixed(1);
+      }
+      return '<path class="s-day-base" d="' + base + '"/><path class="s-day" d="' + d + '"/>';
+    }
+    function schematic(el, label, draw) {
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label);
+      el.appendChild(svg);
+      function render() {
+        var W = Math.max(el.clientWidth || 400, 260), H = Math.round(Math.min(Math.max(W * 0.58, 220), 300));
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H);
+        svg.innerHTML = draw(W, H);
+      }
+      render();
+      if (window.ResizeObserver) new ResizeObserver(render).observe(el);
+    }
+    function frame(W, H, P, xlab) {
+      var b = H - P.b;
+      return '<line class="s-axis" x1="' + P.l + '" y1="' + b + '" x2="' + (W - P.r) + '" y2="' + b + '"/>' +
+        '<line class="s-axis" x1="' + P.l + '" y1="' + P.t + '" x2="' + P.l + '" y2="' + b + '"/>' +
+        '<text class="s-lab" x="' + (W - P.r) + '" y="' + (H - 6) + '" text-anchor="end">' + xlab + '</text>' +
+        '<text class="s-lab" x="' + P.l + '" y="14">↑ Higher physical function</text>';
+    }
+    schematic(document.getElementById('schem-a'),
+      'Illustration: the more a woman\'s activity held up or grew across the day, the higher her physical function at follow-up.',
+      function (W, H) {
+        var P = { l: 2, r: 8, t: 30, b: 74 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
+        var X = function (u) { return P.l + u * pw; }, Y = function (v) { return P.t + (1 - v) * ph; };
+        var band = [[0.06, 0.12], [0.94, 0.70], [0.94, 0.94], [0.06, 0.34]].map(function (p) { return X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ');
+        var gw = Math.min(96, pw * 0.3), gh = 34, gy = H - P.b + 8;
+        return frame(W, H, P, 'Pattern 1: less → more activity all day') +
+          '<polygon class="s-band" points="' + band + '"/>' +
+          '<line class="s-line" x1="' + X(0.06) + '" y1="' + Y(0.23) + '" x2="' + X(0.94) + '" y2="' + Y(0.82) + '"/>' +
+          glyph(X(0.02), gy, gw, gh, less) + glyph(X(0.98) - gw, gy, gw, gh, more);
+      });
+    schematic(document.getElementById('schem-b'),
+      'Illustration: in the later period, more change in the shape of the day went with higher physical function; in the earlier period the link was weaker.',
+      function (W, H) {
+        var P = { l: 2, r: 8, t: 30, b: 34 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
+        var X = function (u) { return P.l + u * pw; }, Y = function (v) { return P.t + (1 - v) * ph; };
+        return frame(W, H, P, 'How much the day’s shape changed: less → more') +
+          '<line class="s-line-2" x1="' + X(0.04) + '" y1="' + Y(0.40) + '" x2="' + X(0.96) + '" y2="' + Y(0.55) + '"/>' +
+          '<line class="s-line" x1="' + X(0.04) + '" y1="' + Y(0.30) + '" x2="' + X(0.96) + '" y2="' + Y(0.90) + '"/>' +
+          '<text class="s-end" x="' + X(0.96) + '" y="' + (Y(0.90) - 10) + '" text-anchor="end">Later period, older ages</text>' +
+          '<text class="s-end-2" x="' + X(0.96) + '" y="' + (Y(0.55) + 22) + '" text-anchor="end">Earlier period</text>';
+      });
   }).catch(function (err) {
+    console.error(err);
     var m = document.createElement('p');
     m.className = 'wrap small';
-    m.textContent = 'The charts could not load their data (' + err.message + '). Serve the site over http, for example with: python3 -m http.server';
+    m.textContent = 'The charts could not be drawn (' + err.message + '). If you opened the file directly, serve the folder over http, for example with: python3 -m http.server';
     document.getElementById('main').prepend(m);
   });
 })();
