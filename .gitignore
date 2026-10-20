@@ -7,3 +7,5 @@ node_modules/
 *.rds
 *.RData
 *.mat
+# synthetic sample uploads are safe to commit
+!data/sample/*.csv
